@@ -57,6 +57,19 @@ feature_validation:
     - month
     - day_of_week
     - CO(GT)
+    
+preprocessing:
+  imputation_strategy: median
+  categorical_imputation_strategy: most_frequent
+  scaling: standard
+  encoding: onehot
+  polynomial_features:
+    enabled: true
+    degree: 2
+    include_bias: false
+  feature_selection:
+    enabled: false
+    k_best: 10
 
 feature_importance:
   enabled: true
