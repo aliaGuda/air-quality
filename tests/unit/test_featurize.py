@@ -71,3 +71,56 @@ def test_pipeline_handles_missing_values_and_categoricals():
 
     assert transformed.shape[0] == 4
     assert pd.DataFrame(transformed).isna().sum().sum() == 0
+
+def test_split_features_target_raises_error_for_missing_target():
+    df = pd.DataFrame(
+        {
+            "feature1": [1, 2, 3],
+            "feature2": [4, 5, 6],
+        }
+    )
+
+    try:
+        split_features_target(df, "target")
+        assert False
+    except ValueError as error:
+        assert "Target column not found" in str(error)
+
+
+def test_numeric_pipeline_creates_more_features_with_polynomial():
+    X = pd.DataFrame(
+        {
+            "num1": [1.0, 2.0, 3.0, 4.0],
+            "num2": [10.0, 20.0, 30.0, 40.0],
+        }
+    )
+    y = pd.Series([1.0, 2.0, 3.0, 4.0])
+
+    pipeline = build_preprocessing_pipeline(X, sample_params())
+    transformed = pipeline.fit_transform(X, y)
+
+    assert transformed.shape[1] > X.shape[1]
+
+
+def test_pipeline_handles_unknown_category():
+    X_train = pd.DataFrame(
+        {
+            "num1": [1.0, 2.0, 3.0, 4.0],
+            "cat1": ["a", "b", "a", "b"],
+        }
+    )
+    y_train = pd.Series([1.0, 2.0, 3.0, 4.0])
+
+    X_test = pd.DataFrame(
+        {
+            "num1": [5.0],
+            "cat1": ["new_category"],
+        }
+    )
+
+    pipeline = build_preprocessing_pipeline(X_train, sample_params())
+    pipeline.fit(X_train, y_train)
+
+    transformed = pipeline.transform(X_test)
+
+    assert transformed.shape[0] == 1
