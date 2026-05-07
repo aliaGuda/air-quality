@@ -27,10 +27,12 @@ jobs:
 
       - name: Configure DVC remote credentials
         run: |
-          dvc remote modify dagshub --local auth basic
-          dvc remote modify dagshub --local user "${{ secrets.DAGSHUB_USERNAME }}"
-          dvc remote modify dagshub --local password "${{ secrets.DAGSHUB_TOKEN }}"
-
+          REMOTE_NAME=$(dvc remote default)
+          echo "Using DVC remote: $REMOTE_NAME"
+          dvc remote modify "$REMOTE_NAME" --local auth basic
+          dvc remote modify "$REMOTE_NAME" --local user "${{ secrets.DVC_USERNAME }}"
+          dvc remote modify "$REMOTE_NAME" --local password "${{ secrets.DVC_PASSWORD }}"
+          
       - name: Pull DVC artifacts
         run: dvc pull -v
 
