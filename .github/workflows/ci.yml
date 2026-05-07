@@ -39,11 +39,24 @@ jobs:
           dvc remote modify "$REMOTE_NAME" --local auth basic
           dvc remote modify "$REMOTE_NAME" --local user "${{ secrets.DVC_USERNAME }}"
           dvc remote modify "$REMOTE_NAME" --local password "${{ secrets.DVC_PASSWORD }}"
+      - name: Debug DVC remote and lock hashes
+        run: |
+          echo "Remote list:"
+          dvc remote list
+
+          echo "Default remote:"
+          dvc remote default
+
+          echo "DVC config:"
+          cat .dvc/config
+
+          echo "DVC lock tracked outputs:"
+          grep -E "path:|md5:" dvc.lock || true
 
       - name: Pull DVC artifacts
         run: |
           REMOTE_NAME=$(dvc remote default)
-          dvc pull -r "$REMOTE_NAME" --force -v
+          dvc fetch -r "$REMOTE_NAME" -v
           dvc checkout --force -v
 
       - name: Lint with ruff
