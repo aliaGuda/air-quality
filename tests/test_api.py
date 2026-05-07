@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
-from app.main import app
-
+from src.serving.main import app
 
 def build_sample_features(expected_features):
     default_values = {

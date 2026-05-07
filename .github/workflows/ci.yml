@@ -14,7 +14,8 @@ jobs:
 
     env:
       PYTHONPATH: .
-      MLFLOW_TRACKING_URI: file:./mlruns
+      CI: "true"
+      MLFLOW_TRACKING_URI: http://localhost:5000
 
     steps:
       - name: Checkout repository
@@ -34,19 +35,19 @@ jobs:
         run: |
           ruff check .
 
-      - name: Unit tests with coverage
+      - name: Unit Tests with Coverage
         run: |
-          pytest tests/ --cov=app --cov-report=term-missing --cov-report=html --cov-fail-under=70
+          pytest tests/ --cov=src/serving --cov-report=term-missing --cov-report=html --cov-fail-under=70
 
-      - name: Data validation
+      - name: Data Validation
         run: |
           python scripts/validate_data.py
 
-      - name: Model validation
+      - name: Model Validation
         run: |
           python scripts/validate_model.py
 
-      - name: Upload coverage report
+      - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
