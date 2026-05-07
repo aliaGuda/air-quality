@@ -1,4 +1,7 @@
 [core]
-    remote = gdrive_remote
-['remote "gdrive_remote"']
-    url = gdrive://1n85mcF8D8FnNmx1ZkUfbeUSUTpLQuo5M
+    remote = origin
+['remote "origin"']
+    url = https://dagshub.com/aliaGuda/air-quality-dvc.dvc
+    auth = basic
+    user = aliaGuda
+    password = 556ac8c0c0b4096b7ca535c43141bc2307a1a111
