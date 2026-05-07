@@ -2,11 +2,17 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.features import featurize
+
 
 X_TRAIN_PATH = Path("data/processed/X_train.csv")
 X_TEST_PATH = Path("data/processed/X_test.csv")
 Y_TRAIN_PATH = Path("data/processed/y_train.csv")
 Y_TEST_PATH = Path("data/processed/y_test.csv")
+
+
+def test_featurize_module_imports():
+    assert featurize is not None
 
 
 def test_processed_files_exist():
@@ -68,4 +74,5 @@ def test_processed_features_are_numeric():
     X_train = pd.read_csv(X_TRAIN_PATH)
 
     non_numeric_cols = X_train.select_dtypes(exclude=["number"]).columns
+
     assert len(non_numeric_cols) == 0
