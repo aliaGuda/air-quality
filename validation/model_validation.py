@@ -5,9 +5,9 @@ import pandas as pd
 from sklearn.metrics import r2_score
 
 
-MODEL_PATH = Path("models/model.pkl")
-TEST_PATH = Path("data/splits/test.csv")
-TARGET_COLUMN = "CO(GT)"
+MODEL_PATH = Path("models/preprocessing_pipeline.joblib")
+X_TEST_PATH = Path("data/processed/X_test.csv")
+Y_TEST_PATH = Path("data/processed/y_test.csv")
 
 MIN_R2_SCORE = 0.30
 
@@ -16,17 +16,16 @@ def validate_model() -> None:
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Missing model file: {MODEL_PATH}")
 
-    if not TEST_PATH.exists():
-        raise FileNotFoundError(f"Missing test file: {TEST_PATH}")
+    if not X_TEST_PATH.exists():
+        raise FileNotFoundError(f"Missing X_test file: {X_TEST_PATH}")
+
+    if not Y_TEST_PATH.exists():
+        raise FileNotFoundError(f"Missing y_test file: {Y_TEST_PATH}")
 
     model = joblib.load(MODEL_PATH)
-    test_df = pd.read_csv(TEST_PATH)
 
-    if TARGET_COLUMN not in test_df.columns:
-        raise ValueError(f"Target column '{TARGET_COLUMN}' is missing from test data")
-
-    X_test = test_df.drop(columns=[TARGET_COLUMN])
-    y_test = test_df[TARGET_COLUMN]
+    X_test = pd.read_csv(X_TEST_PATH)
+    y_test = pd.read_csv(Y_TEST_PATH).squeeze()
 
     predictions = model.predict(X_test)
     score = r2_score(y_test, predictions)
