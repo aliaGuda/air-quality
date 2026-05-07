@@ -96,8 +96,16 @@ training:
     min_r2: 0.50
     max_rmse: 2.5
 
+model:
+  model_path: models/model.joblib
+  preprocessing_pipeline_path: models/preprocessing_pipeline.joblib
+
 model_validation:
   min_r2: 0.30
+  max_mae: 2.0
+
+validation:
+  min_r2: 0.3
   max_mae: 2.0
 
 serving:
