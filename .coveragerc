@@ -1,0 +1,10 @@
+[run]
+omit =
+    .venv/*
+    venv/*
+    mlruns/*
+    .dvc/*
+    data/*
+    tests/*
+    validation/*
+    __pycache__/*

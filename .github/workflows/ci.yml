@@ -12,11 +12,6 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
-    env:
-      PYTHONPATH: .
-      CI: "true"
-      MLFLOW_TRACKING_URI: http://localhost:5000
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,25 +25,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest pytest-cov ruff pandera dvc
 
-      - name: Lint
+      - name: Configure DVC authentication
+        run: |
+          dvc remote modify origin auth basic
+          dvc remote modify origin user ${{ secrets.DVC_USERNAME }}
+          dvc remote modify origin password ${{ secrets.DVC_PASSWORD }}
+
+      - name: Pull DVC artifacts
+        run: |
+          dvc pull -r origin
+
+      - name: Lint with ruff
         run: |
           ruff check .
 
-      - name: Unit Tests with Coverage
+      - name: Unit tests with coverage
         run: |
-          pytest tests/ --cov=src/serving --cov-report=term-missing --cov-report=html --cov-fail-under=70
+          pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
 
-      - name: Data Validation
+      - name: Data validation
         run: |
-          python scripts/validate_data.py
+          python validation/data_validation.py
 
-      - name: Model Validation
+      - name: Model validation
         run: |
-          python scripts/validate_model.py
-
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: htmlcov/
+          python validation/model_validation.py

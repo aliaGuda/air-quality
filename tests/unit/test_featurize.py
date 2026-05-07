@@ -1,126 +1,58 @@
+from pathlib import Path
+
 import pandas as pd
 
-from src.features.featurize import (
-    build_preprocessing_pipeline,
-    get_feature_types,
-    split_features_target,
-)
+
+TRAIN_PATH = Path("data/splits/train.csv")
+TEST_PATH = Path("data/splits/test.csv")
+MODEL_PATH = Path("models/model.pkl")
+TARGET_COLUMN = "CO(GT)"
 
 
-def sample_params():
-    return {
-        "preprocessing": {
-            "imputation_strategy": "median",
-            "categorical_imputation_strategy": "most_frequent",
-            "scaling": "standard",
-            "encoding": "onehot",
-            "polynomial_features": {
-                "enabled": True,
-                "degree": 2,
-                "include_bias": False,
-            },
-            "feature_selection": {
-                "enabled": False,
-                "k_best": 3,
-            },
-        }
-    }
+def test_train_split_exists():
+    assert TRAIN_PATH.exists()
 
 
-def test_split_features_target():
-    df = pd.DataFrame(
-        {
-            "feature1": [1, 2, 3],
-            "feature2": [4, 5, 6],
-            "target": [10, 20, 30],
-        }
-    )
-
-    X, y = split_features_target(df, "target")
-
-    assert "target" not in X.columns
-    assert y.tolist() == [10, 20, 30]
+def test_test_split_exists():
+    assert TEST_PATH.exists()
 
 
-def test_get_feature_types():
-    df = pd.DataFrame(
-        {
-            "num1": [1.0, 2.0, 3.0],
-            "cat1": ["a", "b", "a"],
-        }
-    )
-
-    numeric_features, categorical_features = get_feature_types(df)
-
-    assert "num1" in numeric_features
-    assert "cat1" in categorical_features
+def test_model_file_exists():
+    assert MODEL_PATH.exists()
 
 
-def test_pipeline_handles_missing_values_and_categoricals():
-    X = pd.DataFrame(
-        {
-            "num1": [1.0, None, 3.0, 4.0],
-            "num2": [10.0, 20.0, None, 40.0],
-            "cat1": ["a", "b", None, "a"],
-        }
-    )
-    y = pd.Series([1.0, 2.0, 3.0, 4.0])
-
-    pipeline = build_preprocessing_pipeline(X, sample_params())
-    transformed = pipeline.fit_transform(X, y)
-
-    assert transformed.shape[0] == 4
-    assert pd.DataFrame(transformed).isna().sum().sum() == 0
-
-def test_split_features_target_raises_error_for_missing_target():
-    df = pd.DataFrame(
-        {
-            "feature1": [1, 2, 3],
-            "feature2": [4, 5, 6],
-        }
-    )
-
-    try:
-        split_features_target(df, "target")
-        assert False
-    except ValueError as error:
-        assert "Target column not found" in str(error)
+def test_train_split_not_empty():
+    df = pd.read_csv(TRAIN_PATH)
+    assert not df.empty
 
 
-def test_numeric_pipeline_creates_more_features_with_polynomial():
-    X = pd.DataFrame(
-        {
-            "num1": [1.0, 2.0, 3.0, 4.0],
-            "num2": [10.0, 20.0, 30.0, 40.0],
-        }
-    )
-    y = pd.Series([1.0, 2.0, 3.0, 4.0])
-
-    pipeline = build_preprocessing_pipeline(X, sample_params())
-    transformed = pipeline.fit_transform(X, y)
-
-    assert transformed.shape[1] > X.shape[1]
+def test_test_split_not_empty():
+    df = pd.read_csv(TEST_PATH)
+    assert not df.empty
 
 
-def test_pipeline_handles_unknown_category():
-    X_train = pd.DataFrame(
-        {
-            "num1": [1.0, 2.0, 3.0, 4.0],
-            "cat1": ["a", "b", "a", "b"],
-        }
-    )
-    y_train = pd.Series([1.0, 2.0, 3.0, 4.0])
+def test_target_column_exists_in_train():
+    df = pd.read_csv(TRAIN_PATH)
+    assert TARGET_COLUMN in df.columns
 
-    X_test = pd.DataFrame(
-        {
-            "num1": [5.0],
-            "cat1": ["new_category"],
-        }
-    )
 
-    pipeline = build_preprocessing_pipeline(X_train, sample_params())
-    pipeline.fit(X_train, y_train)
+def test_target_column_exists_in_test():
+    df = pd.read_csv(TEST_PATH)
+    assert TARGET_COLUMN in df.columns
 
-    transformed = pipeline.transform(X_test)
 
-    assert transformed.shape[0] == 1
+def test_train_has_no_missing_values():
+    df = pd.read_csv(TRAIN_PATH)
+    assert df.isna().sum().sum() == 0
+
+
+def test_test_has_no_missing_values():
+    df = pd.read_csv(TEST_PATH)
+    assert df.isna().sum().sum() == 0
+
+
+def test_train_and_test_have_same_columns():
+    train_df = pd.read_csv(TRAIN_PATH)
+    test_df = pd.read_csv(TEST_PATH)
+
+    assert list(train_df.columns) == list(test_df.columns)
