@@ -26,9 +26,11 @@ def main() -> None:
             TARGET_COLUMN: Column(
                 float,
                 checks=[
-                    Check(lambda s: s.notna().all(), error="Target column contains missing values."),
-                    Check.greater_than_or_equal_to(0),
+                    # CO(GT) is nullable at this stage — -200 was replaced with NaN.
+                    # Imputation happens later in the preprocess stage.
+                    Check.greater_than_or_equal_to(0, error="CO(GT) must be >= 0 where not null."),
                 ],
+                nullable=True,
                 coerce=True,
             )
         },
@@ -38,9 +40,11 @@ def main() -> None:
 
     schema.validate(df)
 
-    missing_ratio = df.isna().mean().mean()
+    # Check missing ratio only on feature columns (not the target — nulls are expected there)
+    feature_cols = [c for c in df.columns if c != TARGET_COLUMN]
+    missing_ratio = df[feature_cols].isna().mean().mean()
     if missing_ratio > 0.30:
-        raise ValueError(f"Too many missing values: {missing_ratio:.2%}")
+        raise ValueError(f"Too many missing values in feature columns: {missing_ratio:.2%}")
 
     duplicate_ratio = df.duplicated().mean()
     if duplicate_ratio > 0.20:

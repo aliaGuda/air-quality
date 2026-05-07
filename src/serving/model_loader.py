@@ -66,8 +66,14 @@ class ModelService:
     def load(self) -> None:
         """
         Load model from MLflow Production Registry first.
-        If MLflow Registry is unavailable, fall back to local model artifact.
+        If MLflow Registry is unavailable, or if running in CI, fall back to local model artifact.
         """
+        # In CI environments MLflow server is not running; skip it and use local artifacts
+        if os.getenv("CI", "").lower() == "true":
+            print("CI environment detected. Loading local model artifact directly.")
+            self.load_local_model()
+            return
+
         try:
             mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
             mlflow.set_tracking_uri(mlflow_uri)
