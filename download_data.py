@@ -18,7 +18,7 @@ def main() -> None:
         print(f"Dataset already exists: {CSV_PATH}")
         return
 
-    print("Downloading Air Quality dataset...")
+    print("Downloading UCI Air Quality dataset...")
     response = requests.get(URL, timeout=60)
     response.raise_for_status()
 
@@ -27,7 +27,10 @@ def main() -> None:
     with zipfile.ZipFile(ZIP_PATH, "r") as zip_ref:
         zip_ref.extractall(DATA_DIR)
 
-    print(f"Dataset downloaded and extracted to {DATA_DIR}")
+    if not CSV_PATH.exists():
+        raise FileNotFoundError(f"Expected dataset not found: {CSV_PATH}")
+
+    print(f"Dataset downloaded successfully: {CSV_PATH}")
 
 
 if __name__ == "__main__":

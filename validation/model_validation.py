@@ -3,7 +3,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 import yaml
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, r2_score
 
 
 def load_params(path: str = "configs/params.yaml") -> dict:
@@ -31,7 +31,7 @@ def validate_model(
     test_df = pd.read_csv(test_file)
 
     if target_column not in test_df.columns:
-        raise ValueError(f"Target column '{target_column}' not found in test data.")
+        raise ValueError(f"Target column '{target_column}' not found.")
 
     X_test = test_df.drop(columns=[target_column])
     y_test = test_df[target_column]
@@ -40,19 +40,17 @@ def validate_model(
 
     r2 = r2_score(y_test, predictions)
     mae = mean_absolute_error(y_test, predictions)
-    mse = mean_squared_error(y_test, predictions)
 
     print(f"R2: {r2:.4f}")
     print(f"MAE: {mae:.4f}")
-    print(f"MSE: {mse:.4f}")
 
     if r2 < min_r2:
-        raise ValueError(f"Model R2 is too low: {r2:.4f} < {min_r2}")
+        raise ValueError(f"R2 below threshold: {r2:.4f} < {min_r2}")
 
     if mae > max_mae:
-        raise ValueError(f"Model MAE is too high: {mae:.4f} > {max_mae}")
+        raise ValueError(f"MAE above threshold: {mae:.4f} > {max_mae}")
 
-    print("Model validation passed successfully.")
+    print("Model validation passed.")
 
 
 if __name__ == "__main__":
