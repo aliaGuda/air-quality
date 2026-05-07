@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pandas as pd
-import pandera as pa
 from pandera import Check, Column, DataFrameSchema
 
 
