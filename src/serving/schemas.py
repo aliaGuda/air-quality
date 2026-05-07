@@ -1,16 +1,13 @@
 from typing import Dict, List
+
 from pydantic import BaseModel, Field
 
 
 class PredictionRequest(BaseModel):
     features: Dict[str, float] = Field(
         ...,
-        description="Dictionary of model input features"
+        description="Dictionary of model input features.",
     )
-
-
-class BatchPredictionRequest(BaseModel):
-    records: List[PredictionRequest]
 
 
 class PredictionResponse(BaseModel):
@@ -20,3 +17,7 @@ class PredictionResponse(BaseModel):
     latency_ms: float
     feature_hash: str
     prediction: float
+
+
+class BatchPredictionRequest(BaseModel):
+    records: List[PredictionRequest]

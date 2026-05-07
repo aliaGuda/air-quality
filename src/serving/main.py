@@ -1,24 +1,30 @@
+import hashlib
 import time
 import uuid
-import hashlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from src.serving.schemas import (
-    PredictionRequest,
-    PredictionResponse,
-    BatchPredictionRequest,
-)
-from src.serving.model_loader import ModelService
 from src.serving.logging_config import log_prediction
 from src.serving.metrics import (
-    PREDICTION_REQUESTS_TOTAL,
-    PREDICTION_LATENCY_SECONDS,
+    CONFIDENCE_HISTOGRAM,
+    CURRENT_MODEL_VERSION,
+    FEATURE_C6H6_GT_HISTOGRAM,
+    FEATURE_PT08_S1_CO_HISTOGRAM,
+    INFERENCE_COUNT_BY_CLASS,
     LATEST_PREDICTION_VALUE,
     PREDICTION_ERRORS_TOTAL,
+    PREDICTION_LATENCY_SECONDS,
+    PREDICTION_REQUESTS_TOTAL,
+    bucket_prediction,
+)
+from src.serving.model_loader import ModelService
+from src.serving.schemas import (
+    BatchPredictionRequest,
+    PredictionRequest,
+    PredictionResponse,
 )
 
 
@@ -28,6 +34,12 @@ model_service = ModelService()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     model_service.load()
+
+    try:
+        CURRENT_MODEL_VERSION.set(float(model_service.model_version))
+    except (ValueError, TypeError):
+        CURRENT_MODEL_VERSION.set(1)
+
     yield
 
 
@@ -39,77 +51,30 @@ app = FastAPI(
 )
 
 
+@app.get("/metrics")
+def metrics():
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
     <html>
         <head>
             <title>Air Quality Model API</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 40px;
-                    background: #f4f7fb;
-                    color: #1f2937;
-                }
-                .card {
-                    max-width: 900px;
-                    margin: auto;
-                    background: white;
-                    padding: 30px;
-                    border-radius: 16px;
-                    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-                }
-                h1 { color: #2563eb; }
-                a {
-                    display: inline-block;
-                    margin: 8px 8px 8px 0;
-                    padding: 10px 14px;
-                    background: #2563eb;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 8px;
-                }
-                code {
-                    background: #eef2ff;
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                }
-                li { margin-bottom: 8px; }
-            </style>
         </head>
         <body>
-            <div class="card">
-                <h1>🌫️ Air Quality UCI Model Serving API</h1>
-                <p>This service loads a trained ML model and serves predictions through FastAPI.</p>
-
-                <h2>Endpoints</h2>
-                <ul>
-                    <li><code>GET /health</code> — model and API status</li>
-                    <li><code>POST /predict</code> — single prediction</li>
-                    <li><code>POST /predict/batch</code> — batch predictions</li>
-                    <li><code>GET /metrics</code> — Prometheus metrics</li>
-                    <li><code>GET /schema</code> — expected model features</li>
-                </ul>
-
-                <a href="/health">Open Health</a>
-                <a href="/docs">Open Swagger Docs</a>
-                <a href="/metrics">Open Metrics</a>
-                <a href="/schema">Open Schema</a>
-
-                <h2>Structured Logging</h2>
-                <p>Every prediction is logged to <code>logs/predictions.jsonl</code> with:</p>
-                <ul>
-                    <li>request_id</li>
-                    <li>model_version</li>
-                    <li>confidence</li>
-                    <li>latency_ms</li>
-                    <li>feature_hash</li>
-                    <li>prediction</li>
-                </ul>
-
-                <p>No raw feature values are logged.</p>
-            </div>
+            <h1>Air Quality UCI Model Serving API</h1>
+            <p>This service serves CO(GT) predictions using FastAPI.</p>
+            <ul>
+                <li><a href="/health">Health</a></li>
+                <li><a href="/docs">Swagger Docs</a></li>
+                <li><a href="/metrics">Prometheus Metrics</a></li>
+                <li><a href="/schema">Schema</a></li>
+            </ul>
         </body>
     </html>
     """
@@ -118,12 +83,18 @@ def home():
 def validate_and_order_features(features: dict) -> dict:
     expected = model_service.expected_features
 
+    if not expected:
+        raise HTTPException(
+            status_code=500,
+            detail="Expected feature list is not loaded.",
+        )
+
     missing = set(expected) - set(features.keys())
 
     if missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing required features: {sorted(missing)}"
+            detail=f"Missing required features: {sorted(missing)}",
         )
 
     return {feature: float(features[feature]) for feature in expected}
@@ -153,6 +124,24 @@ def make_prediction(request: PredictionRequest) -> dict:
 
     PREDICTION_REQUESTS_TOTAL.inc()
     LATEST_PREDICTION_VALUE.set(prediction)
+
+    CONFIDENCE_HISTOGRAM.observe(float(confidence))
+
+    if "PT08.S1(CO)" in request.features:
+        FEATURE_PT08_S1_CO_HISTOGRAM.observe(
+            float(request.features["PT08.S1(CO)"])
+        )
+
+    if "C6H6(GT)" in request.features:
+        FEATURE_C6H6_GT_HISTOGRAM.observe(float(request.features["C6H6(GT)"]))
+
+    try:
+        CURRENT_MODEL_VERSION.set(float(model_service.model_version))
+    except (ValueError, TypeError):
+        CURRENT_MODEL_VERSION.set(1)
+
+    prediction_class = bucket_prediction(float(prediction))
+    INFERENCE_COUNT_BY_CLASS.labels(prediction_class=prediction_class).inc()
 
     response_payload = {
         "request_id": request_id,
@@ -195,11 +184,11 @@ def predict(request: PredictionRequest):
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception as error:
         PREDICTION_ERRORS_TOTAL.inc()
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=str(error),
         )
 
 
@@ -216,17 +205,9 @@ def predict_batch(request: BatchPredictionRequest):
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception as error:
         PREDICTION_ERRORS_TOTAL.inc()
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=str(error),
         )
-
-
-@app.get("/metrics")
-def metrics():
-    return Response(
-        generate_latest(),
-        media_type=CONTENT_TYPE_LATEST
-    )
