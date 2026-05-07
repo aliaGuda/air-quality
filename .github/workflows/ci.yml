@@ -43,8 +43,7 @@ jobs:
 
       - name: Unit tests with coverage
         run: |
-          pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=70
-
+          pytest tests/unit/ -v --cov=. --cov-report=term-missing --cov-report=html --cov-fail-under=70
       - name: Data validation
         run: |
           python validation/data_validation.py
