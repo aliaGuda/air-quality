@@ -23,54 +23,33 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install "dvc[http]==3.58.0"
 
-      - name: Debug DVC configuration
+      - name: Download raw dataset
         run: |
-          dvc version
-          dvc remote list
-          dvc remote default
-          dvc status -c || true
+          python download_data.py
 
-      - name: Configure DVC remote credentials
+      - name: Run DVC pipeline
         run: |
-          REMOTE_NAME=$(dvc remote default)
-          echo "Using DVC remote: $REMOTE_NAME"
-          dvc remote modify "$REMOTE_NAME" --local auth basic
-          dvc remote modify "$REMOTE_NAME" --local user "${{ secrets.DVC_USERNAME }}"
-          dvc remote modify "$REMOTE_NAME" --local password "${{ secrets.DVC_PASSWORD }}"
-      - name: Debug DVC remote and lock hashes
-        run: |
-          echo "Remote list:"
-          dvc remote list
+          dvc repro
 
-          echo "Default remote:"
-          dvc remote default
-
-          echo "DVC config:"
-          cat .dvc/config
-
-          echo "DVC lock tracked outputs:"
-          grep -E "path:|md5:" dvc.lock || true
-
-      - name: Pull DVC artifacts
-        run: |
-          REMOTE_NAME=$(dvc remote default)
-          dvc fetch -r "$REMOTE_NAME" -v
-          dvc checkout --force -v
-
-      - name: Lint with ruff
+      - name: Lint
         run: |
           ruff check .
 
-      - name: Run unit tests with coverage
+      - name: Unit tests with coverage
+        env:
+          PYTHONPATH: .
+          CI: "true"
         run: |
-          pytest tests/unit/ -v --cov=. --cov-report=term-missing --cov-fail-under=70
+          pytest tests/unit/ -v --cov=src --cov-report=term-missing --cov-fail-under=70
 
       - name: Data validation
         run: |
           python validation/data_validation.py
 
       - name: Model validation
+        env:
+          PYTHONPATH: .
+          CI: "true"
         run: |
           python validation/model_validation.py
