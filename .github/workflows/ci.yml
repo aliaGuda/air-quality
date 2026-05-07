@@ -25,6 +25,13 @@ jobs:
           pip install -r requirements.txt
           pip install "dvc[http]==3.58.0"
 
+      - name: Debug DVC configuration
+        run: |
+          dvc version
+          dvc remote list
+          dvc remote default
+          dvc status -c || true
+
       - name: Configure DVC remote credentials
         run: |
           REMOTE_NAME=$(dvc remote default)
@@ -32,9 +39,12 @@ jobs:
           dvc remote modify "$REMOTE_NAME" --local auth basic
           dvc remote modify "$REMOTE_NAME" --local user "${{ secrets.DVC_USERNAME }}"
           dvc remote modify "$REMOTE_NAME" --local password "${{ secrets.DVC_PASSWORD }}"
-          
+
       - name: Pull DVC artifacts
-        run: dvc pull -v
+        run: |
+          REMOTE_NAME=$(dvc remote default)
+          dvc pull -r "$REMOTE_NAME" --force -v
+          dvc checkout --force -v
 
       - name: Lint with ruff
         run: |
