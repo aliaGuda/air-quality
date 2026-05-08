@@ -4,13 +4,45 @@ services:
     container_name: air-quality-mlflow
     ports:
       - "5000:5000"
+    working_dir: /mlflow
     volumes:
-      - ./mlflow_data:/mlflow/backend
-      - ./mlruns:/mlflow/artifacts
+      - ./mlruns:/mlflow/mlruns
+      - ./mlflow_data/mlflow.db:/mlflow/mlflow.db
     command: >
       mlflow server
-      --backend-store-uri sqlite:////mlflow/backend/mlflow.db
-      --serve-artifacts
-      --artifacts-destination /mlflow/artifacts
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/mlruns
       --host 0.0.0.0
       --port 5000
+
+  serving-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: air-quality-serving-app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mlflow
+    environment:
+      - PYTHONPATH=/app
+      - USE_MLFLOW=false
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: air-quality-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - serving-app
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: air-quality-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
