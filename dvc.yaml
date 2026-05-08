@@ -37,7 +37,7 @@ stages:
   train:
     cmd: python src/training/train.py
     deps:
-      - src/models/train.py
+      - src/training/train.py
       - data/processed/X_train.csv
       - data/processed/y_train.csv
       - configs/params.yaml
