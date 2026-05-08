@@ -33,3 +33,13 @@ stages:
       - data/processed/X_test.csv
       - data/processed/y_train.csv
       - data/processed/y_test.csv
+
+  train:
+    cmd: python src/training/train.py
+    deps:
+      - src/models/train.py
+      - data/processed/X_train.csv
+      - data/processed/y_train.csv
+      - configs/params.yaml
+    outs:
+      - models/model.joblib
