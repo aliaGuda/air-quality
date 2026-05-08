@@ -1,19 +1,17 @@
 services:
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.17.2
-    container_name: air-quality-mlflow
+    container_name: mlflow
     ports:
-      - "5000:5000"
-    working_dir: /mlflow
+      - "5002:5000"
     volumes:
-      - ./mlruns:/mlflow/mlruns
-      - ./mlflow_data/mlflow.db:/mlflow/mlflow.db
+      - ./mlflow_data:/mlflow
     command: >
       mlflow server
-      --backend-store-uri sqlite:////mlflow/mlflow.db
-      --default-artifact-root /mlflow/mlruns
       --host 0.0.0.0
       --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/mlruns
 
   serving-app:
     build:
@@ -26,8 +24,10 @@ services:
       - mlflow
     environment:
       - PYTHONPATH=/app
-      - USE_MLFLOW=false
+      - USE_MLFLOW=true
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - REGISTERED_MODEL_NAME=air-quality-regressor
+      - MLFLOW_MODEL_STAGE=Production
 
   prometheus:
     image: prom/prometheus:latest
@@ -44,5 +44,13 @@ services:
     container_name: air-quality-grafana
     ports:
       - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  grafana_data:

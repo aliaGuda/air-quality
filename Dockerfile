@@ -12,10 +12,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY src ./src
 COPY configs ./configs
 COPY models ./models
-COPY data/processed/ data/processed/
-
+COPY data/processed ./data/processed
+COPY data/splits ./data/splits
 
 RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+
 USER appuser
 
 EXPOSE 8000

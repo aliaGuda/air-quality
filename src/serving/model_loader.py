@@ -7,8 +7,8 @@ import pandas as pd
 import yaml
 
 
-REGISTERED_MODEL_NAME = "air-quality-regressor"
-MLFLOW_MODEL_STAGE = "Production"
+REGISTERED_MODEL_NAME = os.getenv("REGISTERED_MODEL_NAME", "air-quality-regressor")
+MLFLOW_MODEL_STAGE = os.getenv("MLFLOW_MODEL_STAGE", "Production")
 
 MODEL_PATH = Path("models/model.joblib")
 PREPROCESSOR_PATH = Path("models/preprocessing_pipeline.joblib")
@@ -19,8 +19,11 @@ class ModelService:
     def __init__(self) -> None:
         self.model = None
         self.preprocessor = None
-        self.model_name = "local-model"
-        self.model_version = "1"
+
+        self.model_source = "not-loaded"
+        self.model_name = "not-loaded"
+        self.model_version = "not-loaded"
+
         self.target_variable = "CO(GT)"
         self.expected_features = []
 
@@ -56,6 +59,8 @@ class ModelService:
 
         self.model = joblib.load(MODEL_PATH)
         self.preprocessor = joblib.load(PREPROCESSOR_PATH)
+
+        self.model_source = "local"
         self.model_name = "local-model"
         self.model_version = "1"
 
@@ -71,8 +76,10 @@ class ModelService:
         mlflow.set_tracking_uri(mlflow_uri)
 
         model_uri = f"models:/{REGISTERED_MODEL_NAME}/{MLFLOW_MODEL_STAGE}"
+
         self.model = mlflow.pyfunc.load_model(model_uri)
 
+        self.model_source = "mlflow_registry"
         self.model_name = REGISTERED_MODEL_NAME
         self.model_version = MLFLOW_MODEL_STAGE
 
@@ -85,14 +92,6 @@ class ModelService:
         print(f"MLflow tracking URI: {mlflow_uri}")
 
     def load(self) -> None:
-        """
-        Default behavior:
-        - Load local artifacts from models/.
-        - Use MLflow only when USE_MLFLOW=true.
-
-        This prevents the API from failing when MLflow server is not running.
-        """
-
         use_mlflow = os.getenv("USE_MLFLOW", "false").lower() == "true"
 
         if not use_mlflow:

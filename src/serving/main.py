@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     try:
         CURRENT_MODEL_VERSION.set(float(model_service.model_version))
     except (ValueError, TypeError):
-        CURRENT_MODEL_VERSION.set(1)
+        CURRENT_MODEL_VERSION.set(0)
 
     yield
 
@@ -138,7 +138,7 @@ def make_prediction(request: PredictionRequest) -> dict:
     try:
         CURRENT_MODEL_VERSION.set(float(model_service.model_version))
     except (ValueError, TypeError):
-        CURRENT_MODEL_VERSION.set(1)
+        CURRENT_MODEL_VERSION.set(0)
 
     prediction_class = bucket_prediction(float(prediction))
     INFERENCE_COUNT_BY_CLASS.labels(prediction_class=prediction_class).inc()
@@ -159,8 +159,12 @@ def make_prediction(request: PredictionRequest) -> dict:
 
 @app.get("/health")
 def health():
+    model_loaded = model_service.model is not None
+
     return {
-        "status": "healthy",
+        "status": "healthy" if model_loaded else "unhealthy",
+        "model_loaded": model_loaded,
+        "model_source": model_service.model_source,
         "model_name": model_service.model_name,
         "model_version": model_service.model_version,
         "target_variable": model_service.target_variable,
