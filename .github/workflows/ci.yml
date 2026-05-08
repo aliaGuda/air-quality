@@ -41,8 +41,7 @@ jobs:
           PYTHONPATH: .
           CI: "true"
         run: |
-          pytest tests/unit/ -v --cov=tests/unit --cov-report=term-missing --cov-fail-under=70
-      - name: Data validation
+          pytest tests/unit/ -v --cov=tests/unit --cov-report=term-missing --cov-fail-under=70      - name: Data validation
         env:
           PYTHONPATH: .
         run: |
