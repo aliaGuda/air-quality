@@ -1,7 +1,6 @@
 [core]
-    remote = origin
-['remote "origin"']
-    url = https://dagshub.com/aliaGuda/air-quality.dvc
-    auth = basic
-    user = aliaGuda
-    password = 556ac8c0c0b4096b7ca535c43141bc2307a1a111
+    remote = myremote
+['remote "myremote"']
+    url = s3://airquality/dvcstore
+    endpointurl = https://d16a42901b34328b626d5d537f92e0b0.r2.cloudflarestorage.com
+    listobjects = false
