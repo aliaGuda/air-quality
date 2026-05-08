@@ -78,7 +78,7 @@ feature_importance:
   top_n: 20
 
 mlflow:
-  tracking_uri: http://localhost:5000
+  tracking_uri: http://localhost:5002
 
 training:
   experiment_name: air-quality-regression
