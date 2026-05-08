@@ -1,36 +1,43 @@
 from pathlib import Path
 
 import pandas as pd
-import pandera.pandas as pa
-from pandera import Column, Check
+import pandera as pa
+from pandera import Check, Column
 
 
-DATA_PATH = Path("data/processed/cleaned.csv")
+DATA_PATHS = [
+    Path("data/splits/train.csv"),
+    Path("data/splits/test.csv"),
+    Path("data/splits/reference.csv"),
+    Path("data/splits/production.csv"),
+]
+
 TARGET_COLUMN = "CO(GT)"
 
 
-def main() -> None:
-    if not DATA_PATH.exists():
-        raise FileNotFoundError(f"Missing data file: {DATA_PATH}")
+def validate_single_file(path: Path) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"Missing data file: {path}")
 
-    df = pd.read_csv(DATA_PATH)
+    df = pd.read_csv(path)
 
     if df.empty:
-        raise ValueError("Dataset is empty.")
+        raise ValueError(f"Dataset is empty: {path}")
 
     if TARGET_COLUMN not in df.columns:
-        raise ValueError(f"Target column missing: {TARGET_COLUMN}")
+        raise ValueError(f"Target column missing in {path}: {TARGET_COLUMN}")
 
     schema = pa.DataFrameSchema(
         {
             TARGET_COLUMN: Column(
                 float,
                 checks=[
-                    # CO(GT) is nullable at this stage — -200 was replaced with NaN.
-                    # Imputation happens later in the preprocess stage.
-                    Check.greater_than_or_equal_to(0, error="CO(GT) must be >= 0 where not null."),
+                    Check.greater_than_or_equal_to(
+                        0,
+                        error="CO(GT) must be >= 0.",
+                    ),
                 ],
-                nullable=True,
+                nullable=False,
                 coerce=True,
             )
         },
@@ -40,17 +47,27 @@ def main() -> None:
 
     schema.validate(df)
 
-    # Check missing ratio only on feature columns (not the target — nulls are expected there)
-    feature_cols = [c for c in df.columns if c != TARGET_COLUMN]
+    feature_cols = [column for column in df.columns if column != TARGET_COLUMN]
+
     missing_ratio = df[feature_cols].isna().mean().mean()
     if missing_ratio > 0.30:
-        raise ValueError(f"Too many missing values in feature columns: {missing_ratio:.2%}")
+        raise ValueError(
+            f"Too many missing values in feature columns for {path}: "
+            f"{missing_ratio:.2%}"
+        )
 
     duplicate_ratio = df.duplicated().mean()
     if duplicate_ratio > 0.20:
-        raise ValueError(f"Too many duplicate rows: {duplicate_ratio:.2%}")
+        raise ValueError(f"Too many duplicate rows in {path}: {duplicate_ratio:.2%}")
 
-    print("Data validation passed successfully.")
+    print(f"Data validation passed: {path}")
+
+
+def main() -> None:
+    for path in DATA_PATHS:
+        validate_single_file(path)
+
+    print("All data validation checks passed successfully.")
 
 
 if __name__ == "__main__":
