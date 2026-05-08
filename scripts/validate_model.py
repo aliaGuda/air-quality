@@ -3,7 +3,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 import yaml
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 MODEL_PATH = Path("models/model.joblib")
@@ -13,6 +13,9 @@ PARAMS_PATH = Path("configs/params.yaml")
 
 
 def load_params() -> dict:
+    if not PARAMS_PATH.exists():
+        raise FileNotFoundError(f"Missing params file: {PARAMS_PATH}")
+
     with open(PARAMS_PATH, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
 
@@ -20,7 +23,7 @@ def load_params() -> dict:
 def main() -> None:
     params = load_params()
 
-    target_column = params.get("target_column", "CO(GT)")
+    target_column = params["data"]["target_column"]
     min_r2 = params.get("model_validation", {}).get("min_r2", 0.30)
     max_mae = params.get("model_validation", {}).get("max_mae", 2.0)
 
@@ -40,6 +43,11 @@ def main() -> None:
 
     if target_column not in test_df.columns:
         raise ValueError(f"Target column missing from test set: {target_column}")
+
+    test_df = test_df.dropna(subset=[target_column])
+
+    if test_df.empty:
+        raise ValueError("Test dataset is empty after dropping missing target rows.")
 
     X_test = test_df.drop(columns=[target_column])
     y_test = test_df[target_column]
