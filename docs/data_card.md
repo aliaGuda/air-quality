@@ -1,183 +1,320 @@
 # Data Card — UCI Air Quality Dataset
 
-## Dataset Overview
+# Dataset Overview
 
-| Field           | Value                           |
-| --------------- | ------------------------------- |
-| Dataset Name    | UCI Air Quality Dataset         |
-| Source          | UCI Machine Learning Repository |
-| Data Type       | Multivariate Time Series        |
-| Task            | Regression                      |
-| Target Variable | CO(GT)                          |
+| Field | Value |
+|---|---|
+| Dataset Name | UCI Air Quality Dataset |
+| Source | UCI Machine Learning Repository |
+| Data Type | Multivariate Time Series |
+| Task Type | Regression |
+| Target Variable | `CO(GT)` |
+| File Format | CSV |
+| Domain | Environmental Monitoring |
+| Primary Use | Air Quality Prediction |
 
 ---
 
-## Dataset Description
+# Dataset Description
 
-The dataset contains hourly averaged measurements from an array of gas sensors deployed in an Italian city.
+The dataset contains hourly averaged environmental measurements collected from an array of gas sensors deployed in an Italian city.
 
-The data was collected for air quality monitoring and environmental analysis.
+The dataset was designed for:
+
+* Air quality monitoring
+* Environmental analysis
+* Pollution prediction research
+* Sensor-based forecasting experiments
 
 Measurements include:
 
-* Carbon Monoxide
-* Nitrogen Oxides
+* Carbon Monoxide concentration
+* Nitrogen Oxides concentration
 * Benzene concentration
 * Temperature
 * Relative Humidity
 * Absolute Humidity
-* Sensor outputs
+* Gas sensor responses
+
+The dataset represents real-world environmental sensor behavior and includes naturally occurring missing values and sensor noise.
 
 ---
 
-## Data Source
+# Data Source
 
 Official Source:
 
 * UCI Machine Learning Repository
 
-Original creators:
+Original dataset creators:
 
 * Environmental monitoring researchers
 
-The dataset is publicly available for educational and research use.
+Dataset availability:
+
+* Publicly available for academic and research usage
 
 ---
 
-## Schema
+# Dataset Characteristics
 
-### Input Features
-
-| Feature       | Description                      |
-| ------------- | -------------------------------- |
-| PT08.S1(CO)   | Tin oxide sensor response for CO |
-| NMHC(GT)      | Non-methane hydrocarbons         |
-| C6H6(GT)      | Benzene concentration            |
-| PT08.S2(NMHC) | Sensor response for NMHC         |
-| NOx(GT)       | Nitrogen oxides concentration    |
-| PT08.S3(NOx)  | Sensor response for NOx          |
-| NO2(GT)       | Nitrogen dioxide concentration   |
-| PT08.S4(NO2)  | Sensor response for NO2          |
-| PT08.S5(O3)   | Sensor response for ozone        |
-| T             | Temperature                      |
-| RH            | Relative humidity                |
-| AH            | Absolute humidity                |
-
-### Target Variable
-
-| Feature | Description                   |
-| ------- | ----------------------------- |
-| CO(GT)  | Carbon monoxide concentration |
+| Characteristic | Value |
+|---|---|
+| Dataset Type | Tabular Time-Series |
+| Observation Frequency | Hourly |
+| Feature Types | Numerical |
+| Missing Values | Present |
+| Sensor Measurements | Included |
+| Engineered Features | Included after preprocessing |
 
 ---
 
-## Data Preprocessing Decisions
+# Input Schema
 
-The following preprocessing steps were applied:
+## Raw Input Features
+
+| Feature | Description |
+|---|---|
+| PT08.S1(CO) | Tin oxide sensor response for CO |
+| NMHC(GT) | Non-methane hydrocarbons concentration |
+| C6H6(GT) | Benzene concentration |
+| PT08.S2(NMHC) | Sensor response for NMHC |
+| NOx(GT) | Nitrogen oxides concentration |
+| PT08.S3(NOx) | Sensor response for NOx |
+| NO2(GT) | Nitrogen dioxide concentration |
+| PT08.S4(NO2) | Sensor response for NO2 |
+| PT08.S5(O3) | Sensor response for ozone |
+| T | Temperature |
+| RH | Relative humidity |
+| AH | Absolute humidity |
+
+---
+
+# Engineered Features
+
+The preprocessing pipeline generates additional temporal features:
+
+| Feature | Description |
+|---|---|
+| month | Month extracted from timestamp |
+| day | Day extracted from timestamp |
+| day_of_week | Day of week extracted from timestamp |
+| hour | Hour extracted from timestamp |
+
+---
+
+# Target Variable
+
+| Feature | Description |
+|---|---|
+| CO(GT) | Carbon Monoxide concentration |
+
+---
+
+# Data Preprocessing Pipeline
+
+The following preprocessing operations were applied:
 
 1. Missing value handling
 2. Invalid measurement filtering
-3. Feature engineering
-4. Scaling and normalization
+3. Temporal feature engineering
+4. Numerical scaling
 5. Train-validation-test splitting
-6. Pipeline serialization
+6. Preprocessing pipeline serialization
 
-Missing values were handled using preprocessing pipelines instead of manual deletion to preserve dataset size.
+Preprocessing was implemented using reusable Scikit-learn pipelines.
+
+Missing values were handled through pipeline-based transformations rather than manual row deletion to preserve dataset size and maintain reproducibility.
+
+---
+# Dataset Splits
+
+The dataset was divided into the following subsets:
+
+* Training dataset
+* Test dataset
+* Reference dataset
+* Production dataset
+
+Purpose of each split:
+
+| Split | Purpose |
+|---|---|
+| Train | Model training and preprocessing fitting |
+| Test | Offline model evaluation |
+| Reference | Baseline monitoring and drift comparison |
+| Production | Simulated production inference monitoring |
+
+The project uses structured/tabular regression rather than sequential forecasting.
+
+Predictions are generated from independent environmental and sensor measurements without using:
+
+* Lag features
+* Sliding windows
+* Autoregressive forecasting
+* Sequential prediction models
+
+Temporal features such as:
+
+* month
+* day
+* day_of_week
+* hour
+
+are included as engineered structured features rather than sequence inputs.
+
+The split strategy was designed to:
+
+* Prevent data leakage
+* Support reproducible experimentation
+* Enable monitoring workflows
+* Support drift detection using Evidently AI
+
+The reference and production datasets are used for:
+
+* Feature drift detection
+* Prediction drift monitoring
+* Data quality comparisons
+* Monitoring demonstrations
 
 ---
 
-## Data Quality Considerations
+# Data Quality Considerations
 
-Known issues in the dataset include:
+Known dataset issues include:
 
 * Missing values
 * Sensor noise
-* Potential outliers
+* Outliers
 * Temporal inconsistencies
-* Historical environmental drift
+* Environmental drift
+* Sensor degradation over time
 
-The preprocessing pipeline was designed to reduce the impact of these issues.
+The preprocessing pipeline was designed to reduce the impact of these issues through validation and transformation steps.
 
 ---
 
-## Bias and Fairness Notes
+# Bias and Fairness Notes
 
-This dataset does not contain demographic information.
+The dataset does not contain:
+
+* Personally identifiable information
+* Demographic information
+* Human-sensitive attributes
 
 However, environmental bias may exist because:
 
 * Data originates from a limited geographic region
-* Pollution conditions may not generalize globally
-* Seasonal variations may influence distributions
+* Pollution patterns may differ globally
+* Seasonal variations affect feature distributions
+* Sensor calibration may vary over time
 
-The model should not be assumed to generalize to all cities or climates.
+The resulting model should not be assumed to generalize across all cities, climates, or environmental conditions without additional validation.
 
 ---
 
-## Privacy Considerations
+# Privacy Considerations
 
 The dataset contains:
 
-* No personally identifiable information
-* No sensitive user data
+* No personal user data
 * No demographic information
+* No sensitive information
+* No identifiable records
 
 Privacy risk is considered minimal.
 
 ---
 
-## Licensing and Usage
-
-Dataset usage follows the terms provided by the UCI Machine Learning Repository.
-
-Intended usage:
-
-* Academic projects
-* Research experiments
-* Educational demonstrations
-
-Not intended for:
-
-* Commercial environmental compliance systems
-* Critical infrastructure monitoring without additional validation
-
----
-
-## Versioning and Tracking
-
-Dataset management tools:
-
-* DVC for data versioning
-* Git for code tracking
-* MLflow for experiment tracking
-
-Processed datasets are stored separately from raw data to maintain reproducibility.
-
----
-
-## Data Validation
+# Validation and Quality Checks
 
 Validation checks include:
 
-* Missing value checks
+* Missing value validation
 * Schema validation
+* Numerical range validation
 * Feature consistency checks
-* Distribution monitoring
-* Drift detection reports
+* Drift detection monitoring
+* Distribution comparison checks
+
+Validation is integrated into both training and serving workflows.
 
 ---
 
-## Monitoring Integration
+# Monitoring Integration
 
 The dataset supports monitoring workflows including:
 
 * Feature drift detection
 * Prediction drift monitoring
-* Performance tracking
 * Input anomaly detection
+* Data quality monitoring
+* Performance tracking
 
-Tools used:
+Monitoring tools used:
 
 * Evidently AI
 * Prometheus
 * Grafana
+
+---
+
+# Dataset Versioning and Tracking
+
+Dataset and artifact management tools:
+
+* DVC for dataset versioning
+* Git for code tracking
+* MLflow for experiment tracking
+
+Tracked artifacts include:
+
+* Raw datasets
+* Processed datasets
+* Training splits
+* Preprocessing pipelines
+* Modeling artifacts
+
+Processed datasets are stored separately from raw datasets to preserve reproducibility and lineage tracking.
+
+---
+
+# Storage and Reproducibility
+
+Dataset reproducibility is supported using:
+
+* DVC artifact versioning
+* Cloudflare R2 remote storage
+* Docker-based execution environments
+* Parameter configuration files
+* Git-based source control
+
+---
+
+# Intended Usage
+
+Recommended usage:
+
+* Academic research
+* Educational MLOps projects
+* Environmental machine learning experiments
+* Monitoring and observability demonstrations
+
+---
+
+# Non-Intended Usage
+
+The dataset and resulting models are NOT intended for:
+
+* Critical infrastructure systems
+* Government environmental enforcement
+* Emergency response systems
+* Production environmental compliance systems without additional validation
+
+---
+
+# Contact
+
+Dataset documentation prepared as part of an academic MLOps engineering project.
+
+---
