@@ -6,20 +6,21 @@ This project is an end-to-end MLOps pipeline for predicting air quality levels u
 
 The system includes:
 
-* Data preprocessing
-* Model training
-* Experiment tracking with MLflow
-* Model serving with FastAPI
-* Monitoring with Prometheus and Grafana
-* Drift reporting with Evidently AI
-* Interactive dashboards with Streamlit
-* Data and artifact versioning with DVC
-* CI/CD with GitHub Actions
-* Docker-based deployment
+- Data preprocessing
+- Model training
+- Experiment tracking with MLflow
+- Model serving with FastAPI
+- Monitoring with Prometheus and Grafana
+- Drift reporting with Evidently AI
+- Interactive dashboards with Streamlit
+- Data and artifact versioning with DVC
+- CI/CD with GitHub Actions
+- Docker-based deployment
+- Training pipeline orchestration with Prefect
 
 The target variable for prediction is:
 
-* `CO(GT)` — Carbon Monoxide concentration.
+- `CO(GT)` — Carbon Monoxide concentration.
 
 ---
 
@@ -27,10 +28,10 @@ The target variable for prediction is:
 
 Before running the project on a new device, install:
 
-* Git
-* Python 3.10
-* pip
-* Docker Desktop
+- Git
+- Python 3.10
+- pip
+- Docker Desktop
 
 Verify installation:
 
@@ -56,7 +57,7 @@ cd air-quality
 
 ## 2. Create and Activate Virtual Environment
 
-Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 python -m venv venv
@@ -76,7 +77,38 @@ pip install "dvc[s3]"
 
 ---
 
-## 4. Configure DVC Remote
+# Downloading the Dataset
+
+The project uses the UCI Air Quality Dataset.
+
+Download the dataset from Kaggle:
+
+- https://www.kaggle.com/datasets/uciml/air-quality-data-set
+
+After downloading:
+
+1. Extract the dataset.
+2. Rename the CSV file to:
+
+```text
+AirQualityUCI.csv
+```
+
+3. Place the file inside:
+
+```text
+data/raw/
+```
+
+Expected final path:
+
+```text
+data/raw/AirQualityUCI.csv
+```
+
+---
+
+# Configure DVC Remote
 
 The project uses Cloudflare R2 as the DVC remote storage.
 
@@ -112,6 +144,20 @@ Pull data, models, MLflow files, and artifacts:
 ```bash
 dvc pull -r myremote
 ```
+
+Recreate the full pipeline artifacts from scratch:
+
+```bash
+dvc repro
+```
+
+This regenerates:
+
+- processed datasets
+- train/test/reference splits
+- trained models
+- evaluation metrics
+- generated artifacts
 
 ---
 
@@ -164,18 +210,18 @@ http://localhost:8501
 The Evidently HTML reports are generated in:
 
 ```text
-src\monitoring\evidently_reports\
+src/monitoring/evidently_reports/
 ```
 
 Open the baseline report:
 
-```powershell
+```bash
 start src\monitoring\evidently_reports\baseline_report.html
 ```
 
 Open the drift report:
 
-```powershell
+```bash
 start src\monitoring\evidently_reports\drift_report.html
 ```
 
@@ -190,16 +236,55 @@ Then open the HTML files again.
 
 ---
 
+# Running the Prefect Orchestration Pipeline
+
+The project includes a Prefect orchestration flow for automating the ML training pipeline.
+
+Run the Prefect server UI:
+
+```bash
+prefect server start
+```
+
+Open Prefect UI:
+
+```text
+http://127.0.0.1:4200
+```
+
+Run the orchestration flow:
+
+```bash
+python src/orchestration/prefect_flow.py
+```
+
+Pipeline tasks include:
+
+- validate_data
+- preprocess
+- train
+- evaluate
+- register_model
+
+### Features
+
+- Schedulable orchestration pipeline
+- Automatic downstream failure stopping
+- Error logging through Prefect UI
+- Independent orchestration layer separate from the main pipeline
+
+---
+
 # MLflow Persistence
 
 MLflow data and artifacts are persisted locally so they remain available after Docker rebuilds.
 
 The project uses:
 
-```text
-MLflow database/artifacts metadata → mlflow_data/
-MLflow model artifacts             → mlartifacts/
-```
+| Component | Location |
+|---|---|
+| MLflow database/artifacts metadata | `mlflow_data/` |
+| MLflow model artifacts | `mlartifacts/` |
 
 These folders should exist after pulling DVC artifacts:
 
@@ -251,7 +336,9 @@ air-quality/
 │   ├── training/
 │   ├── preprocessing/
 │   ├── serving/
-│   └── monitoring/
+│   ├── monitoring/
+│   └── orchestration/
+│       └── prefect_flow.py
 │
 ├── validation/
 │   └── model_validation.py
@@ -263,6 +350,117 @@ air-quality/
 ├── Dockerfile
 ├── requirements.txt
 └── README.md
+```
+
+---
+
+# Versioning and Reproducibility
+
+The project uses explicit versioning across datasets, models, experiments, and orchestration components to ensure full reproducibility.
+
+---
+
+## Dataset Version
+
+Dataset version tracked with DVC:
+
+```text
+UCI Air Quality Dataset → v1.0
+```
+
+Tracked using:
+
+```bash
+dvc add data/raw/AirQualityUCI.csv
+```
+
+---
+
+## Model Versions
+
+| Model | Version |
+|---|---|
+| Ridge Regression | v1.0 |
+| Random Forest Regressor | v1.0 |
+| Gradient Boosting Regressor | v1.0 |
+| Best Production Model | v1.0 |
+
+### MLflow Model Registry Stages
+
+| Stage | Purpose |
+|---|---|
+| Staging | Candidate evaluation |
+| Production | Current deployed model |
+
+---
+
+## MLflow Experiment Versions
+
+| Experiment | Version |
+|---|---|
+| Optuna Ridge Experiment | v1.0 |
+| Optuna Random Forest Experiment | v1.0 |
+| Optuna Gradient Boosting Experiment | v1.0 |
+
+Tracked metadata:
+
+- hyperparameters
+- RMSE
+- MAE
+- R² score
+- artifacts
+- model signatures
+- plots
+
+---
+
+## API Version
+
+| Component | Version |
+|---|---|
+| FastAPI Prediction Service | v1.0 |
+
+Endpoints:
+
+- `/predict`
+- `/predict/batch`
+- `/health`
+- `/metrics`
+
+---
+
+## Monitoring Stack Versions
+
+| Component | Version |
+|---|---|
+| Prometheus Monitoring | v1.0 |
+| Grafana Dashboard | v1.0 |
+| Evidently Drift Reports | v1.0 |
+| Streamlit Dashboard | v1.0 |
+
+---
+
+## Orchestration Version
+
+| Component | Version |
+|---|---|
+| Prefect Training Flow | v1.0 |
+
+---
+
+# Dependency Versions
+
+Important pinned versions:
+
+```text
+Python==3.10
+mlflow==2.17.2
+dvc==3.55.2
+prefect==2.20.14
+fastapi==0.115.4
+prometheus-client==0.21.0
+evidently==0.4.39
+streamlit==latest
 ```
 
 ---
@@ -391,14 +589,14 @@ pytest tests/unit/ -v
 
 The monitoring stack includes:
 
-* FastAPI request monitoring
-* Prediction request counters
-* Prediction error counters
-* Prediction latency metrics
-* Prometheus metrics endpoint
-* Grafana dashboard visualizations
-* Evidently baseline and drift reports
-* Streamlit dashboard views
+- FastAPI request monitoring
+- Prediction request counters
+- Prediction error counters
+- Prediction latency metrics
+- Prometheus metrics endpoint
+- Grafana dashboard visualizations
+- Evidently baseline and drift reports
+- Streamlit dashboard views
 
 ---
 
@@ -434,25 +632,25 @@ docker ps
 
 GitHub Actions automatically performs:
 
-1. Linting
-2. Unit testing
-3. Coverage validation
-4. Data validation
-5. Model validation
-6. Docker image build verification
+- Linting
+- Unit testing
+- Coverage validation
+- Data validation
+- Model validation
+- Docker image build verification
 
 Pipeline triggers:
 
-* Push to main branch
-* Pull requests
+- Push to main branch
+- Pull requests
 
 ---
 
 # Contributors
 
-* Alia Guda
-* Noor Abdelhady
-* Moemen Mohie
+- Alia Guda
+- Noor Abdelhady
+- Moemen Mohie
 
 ---
 
