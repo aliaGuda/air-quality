@@ -5,7 +5,7 @@ stages:
     deps:
     - path: configs/params.yaml
       hash: md5
-      md5: 86ee1b56d13527d1d7e80c70220816f8
+      md5: cdc0307957aedb9979778a17db01d463
       size: 2790
     - path: data/raw/AirQualityUCI.csv
       hash: md5
@@ -25,7 +25,7 @@ stages:
     deps:
     - path: configs/params.yaml
       hash: md5
-      md5: 86ee1b56d13527d1d7e80c70220816f8
+      md5: cdc0307957aedb9979778a17db01d463
       size: 2790
     - path: data/processed/cleaned.csv
       hash: md5
@@ -57,7 +57,7 @@ stages:
     deps:
     - path: configs/params.yaml
       hash: md5
-      md5: 86ee1b56d13527d1d7e80c70220816f8
+      md5: cdc0307957aedb9979778a17db01d463
       size: 2790
     - path: data/splits/test.csv
       hash: md5
@@ -97,7 +97,7 @@ stages:
     deps:
     - path: configs/params.yaml
       hash: md5
-      md5: 86ee1b56d13527d1d7e80c70220816f8
+      md5: cdc0307957aedb9979778a17db01d463
       size: 2790
     - path: data/processed/X_train.csv
       hash: md5
@@ -109,10 +109,10 @@ stages:
       size: 30707
     - path: src/training/train.py
       hash: md5
-      md5: 7e21ec2e66c1f740c413383882bb148c
-      size: 11759
+      md5: 9f01e469678af2155d695e8249154a2b
+      size: 11803
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: b48df0579870dcb4a0606981ad01a183
-      size: 1347069
+      md5: 363912e65aab39f7c0cedf8b8169c2c6
+      size: 1427996
