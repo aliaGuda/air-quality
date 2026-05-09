@@ -30,6 +30,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install dvc dvc-s3
+          pip install "dvc[s3]"
 
       - name: Pull DVC artifacts from Cloudflare R2
         env:
