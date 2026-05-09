@@ -262,9 +262,9 @@ Pipeline triggers:
 
 # Contributors
 
-* May Samir
-* Noor
-* Moemen
+* Alia Guda
+* Noor Abdelhady
+* Moemen Mohie
 
 ---
 
