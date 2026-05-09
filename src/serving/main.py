@@ -33,6 +33,25 @@ from src.serving.schemas import (
 model_service = ModelService()
 
 
+FEATURE_RANGES = {
+    "hour": (0, 23),
+    "day": (1, 31),
+    "month": (1, 12),
+    "day_of_week": (0, 6),
+    "PT08.S1(CO)": (0, 3000),
+    "C6H6(GT)": (0, 100),
+    "PT08.S2(NMHC)": (0, 3000),
+    "NOx(GT)": (0, 2000),
+    "PT08.S3(NOx)": (0, 3000),
+    "NO2(GT)": (0, 500),
+    "PT08.S4(NO2)": (0, 3000),
+    "PT08.S5(O3)": (0, 3000),
+    "T": (-30, 60),
+    "RH": (0, 100),
+    "AH": (0, 5),
+}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     model_service.load()
@@ -82,6 +101,34 @@ def home():
     """
 
 
+def validate_feature_ranges(features: dict) -> None:
+    errors = []
+
+    for feature, value in features.items():
+        if feature not in FEATURE_RANGES:
+            continue
+
+        min_value, max_value = FEATURE_RANGES[feature]
+
+        if value < min_value or value > max_value:
+            errors.append(
+                {
+                    "feature": feature,
+                    "value": value,
+                    "allowed_range": [min_value, max_value],
+                }
+            )
+
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Feature values outside allowed ranges",
+                "invalid_features": errors,
+            },
+        )
+
+
 def validate_and_order_features(features: dict) -> dict:
     expected = model_service.expected_features
 
@@ -91,15 +138,63 @@ def validate_and_order_features(features: dict) -> dict:
             detail="Expected feature list is not loaded.",
         )
 
-    missing = set(expected) - set(features.keys())
+    expected_set = set(expected)
+    received_set = set(features.keys())
+
+    missing = sorted(expected_set - received_set)
+    unexpected = sorted(received_set - expected_set)
 
     if missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing required features: {sorted(missing)}",
+            detail={
+                "error": "Missing required features",
+                "missing_features": missing,
+            },
         )
 
-    return {feature: float(features[feature]) for feature in expected}
+    if unexpected:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Unexpected features provided",
+                "unexpected_features": unexpected,
+            },
+        )
+
+    ordered_features = {}
+
+    for feature in expected:
+        value = features[feature]
+
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Invalid feature type",
+                    "feature": feature,
+                    "value": value,
+                    "expected_type": "numeric",
+                },
+            )
+
+        if not np.isfinite(value):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Invalid numeric value",
+                    "feature": feature,
+                    "value": value,
+                },
+            )
+
+        ordered_features[feature] = value
+
+    validate_feature_ranges(ordered_features)
+
+    return ordered_features
 
 
 def hash_features(features: dict) -> str:
@@ -137,6 +232,7 @@ def calculate_confidence(ordered_features: dict) -> float:
 
     except Exception:
         return 0.5
+
 
 def make_prediction(request: PredictionRequest) -> dict:
     start_time = time.time()

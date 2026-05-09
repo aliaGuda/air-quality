@@ -20,4 +20,8 @@ class PredictionResponse(BaseModel):
 
 
 class BatchPredictionRequest(BaseModel):
-    records: List[PredictionRequest]
+    records: List[PredictionRequest] = Field(
+        ...,
+        min_length=1,
+        description="List of prediction requests for batch inference.",
+    )
