@@ -38,6 +38,16 @@ models/*
 .dvc/config.local
 
 # =========================
+# Model Artifacts (handled by DVC)
+# =========================
+mlartifacts/
+mlflow_data/
+artifacts/
+
+mlartifacts.dvc
+mlflow_data.dvc
+
+# =========================
 # Logs & Tracking
 # =========================
 logs/*.log
@@ -51,10 +61,4 @@ mlruns/
 .vscode/
 .idea/
 
-# =========================
-# Keep empty folders
-# =========================
-!logs/.gitkeep
-download_data.py
-/mlartifacts
-/mlflow_data
+
