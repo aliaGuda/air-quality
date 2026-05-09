@@ -6,12 +6,15 @@ services:
       - "5002:5000"
     volumes:
       - ./mlflow_data:/mlflow
+      - ./mlartifacts:/mlartifacts
     command: >
       mlflow server
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root mlflow-artifacts:/
+      --serve-artifacts
+      --artifacts-destination file:///mlartifacts
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri sqlite:///mlflow/mlflow.db
-      --default-artifact-root /mlflow/mlruns
 
   serving-app:
     build:
@@ -22,10 +25,13 @@ services:
       - "8000:8000"
     depends_on:
       - mlflow
+    volumes:
+      - ./mlartifacts:/mlartifacts
     environment:
       - PYTHONPATH=/app
       - USE_MLFLOW=true
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MODEL_SOURCE=mlflow
       - REGISTERED_MODEL_NAME=air-quality-regressor
       - MLFLOW_MODEL_STAGE=Production
 

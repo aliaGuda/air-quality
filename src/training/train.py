@@ -14,6 +14,7 @@ import optuna
 import pandas as pd
 import yaml
 from matplotlib import pyplot as plt
+from mlflow.tracking import MlflowClient
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -23,6 +24,43 @@ from sklearn.model_selection import cross_val_score
 def load_params(path: str = "configs/params.yaml") -> dict:
     with open(path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
+
+
+def setup_mlflow(params: dict) -> None:
+    tracking_uri = os.getenv(
+        "MLFLOW_TRACKING_URI",
+        params["mlflow"]["tracking_uri"],
+    )
+
+    experiment_name = params["training"]["experiment_name"]
+
+    mlflow.set_tracking_uri(tracking_uri)
+    client = MlflowClient(tracking_uri=tracking_uri)
+
+    experiment = client.get_experiment_by_name(experiment_name)
+
+    if experiment is None:
+        experiment_id = client.create_experiment(
+            name=experiment_name,
+            artifact_location="mlflow-artifacts:/",
+        )
+        experiment = client.get_experiment(experiment_id)
+    else:
+        experiment_id = experiment.experiment_id
+
+        if not experiment.artifact_location.startswith("mlflow-artifacts:/"):
+            raise RuntimeError(
+                f"Wrong artifact location for experiment '{experiment_name}': "
+                f"{experiment.artifact_location}\n"
+                "This experiment was created with the wrong artifact path. "
+                "Delete/backup mlflow_data and mlartifacts, then rerun training."
+            )
+
+    mlflow.set_experiment(experiment_name)
+
+    print(f"MLflow tracking URI: {tracking_uri}")
+    print(f"MLflow experiment: {experiment_name}")
+    print(f"MLflow artifact location: {experiment.artifact_location}")
 
 
 def load_data() -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
@@ -39,7 +77,6 @@ def rmse(y_true, y_pred) -> float:
 
 def evaluate_model(model, X_test, y_test) -> dict:
     predictions = model.predict(X_test)
-
     return {
         "mae": float(mean_absolute_error(y_test, predictions)),
         "mse": float(mean_squared_error(y_test, predictions)),
@@ -98,9 +135,7 @@ def get_baseline_models(random_state: int) -> dict:
 
 def create_model_from_trial(trial, algorithm: str, random_state: int):
     if algorithm == "ridge":
-        return Ridge(
-            alpha=trial.suggest_float("alpha", 0.001, 100.0, log=True)
-        )
+        return Ridge(alpha=trial.suggest_float("alpha", 0.001, 100.0, log=True))
 
     if algorithm == "random_forest":
         return RandomForestRegressor(
@@ -126,7 +161,6 @@ def create_model_from_trial(trial, algorithm: str, random_state: int):
 
 def objective(trial, algorithm: str, X_train, y_train, random_state: int) -> float:
     model = create_model_from_trial(trial, algorithm, random_state)
-
     scores = cross_val_score(
         model,
         X_train,
@@ -135,18 +169,10 @@ def objective(trial, algorithm: str, X_train, y_train, random_state: int) -> flo
         cv=3,
         n_jobs=-1,
     )
-
     return float(-scores.mean())
 
 
-def train_and_log_baseline_model(
-    model_name: str,
-    model,
-    X_train,
-    y_train,
-    X_test,
-    y_test,
-) -> dict:
+def train_and_log_baseline_model(model_name, model, X_train, y_train, X_test, y_test) -> dict:
     artifact_dir = Path("artifacts") / model_name
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
@@ -163,7 +189,6 @@ def train_and_log_baseline_model(
         mlflow.log_param("run_type", "baseline")
         mlflow.log_params(model.get_params())
         log_dataset_metadata(X_train, X_test)
-
         mlflow.log_metric("training_time_seconds", training_time)
 
         for metric_name, value in metrics.items():
@@ -200,36 +225,17 @@ def train_and_log_baseline_model(
         }
 
 
-def run_optuna_hpo_for_algorithm(
-    algorithm: str,
-    X_train,
-    y_train,
-    X_test,
-    y_test,
-    params: dict,
-) -> dict:
+def run_optuna_hpo_for_algorithm(algorithm, X_train, y_train, X_test, y_test, params) -> dict:
     random_state = params["project"]["random_state"]
     n_trials = params["training"]["hpo"]["n_trials"]
 
     study = optuna.create_study(direction="minimize")
-
     study.optimize(
-        lambda trial: objective(
-            trial,
-            algorithm,
-            X_train,
-            y_train,
-            random_state,
-        ),
+        lambda trial: objective(trial, algorithm, X_train, y_train, random_state),
         n_trials=n_trials,
     )
 
-    best_model = create_model_from_trial(
-        study.best_trial,
-        algorithm,
-        random_state,
-    )
-
+    best_model = create_model_from_trial(study.best_trial, algorithm, random_state)
     run_name = f"optuna_{algorithm}"
     artifact_dir = Path("artifacts") / run_name
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -288,7 +294,6 @@ def run_optuna_hpo_for_algorithm(
 
 def export_experiment_log(experiment_name: str) -> None:
     experiment = mlflow.get_experiment_by_name(experiment_name)
-
     if experiment is None:
         raise ValueError(f"Experiment not found: {experiment_name}")
 
@@ -318,8 +323,7 @@ def save_best_model(best_result: dict) -> None:
 def main() -> None:
     params = load_params()
 
-    mlflow.set_tracking_uri(params["mlflow"]["tracking_uri"])
-    mlflow.set_experiment(params["training"]["experiment_name"])
+    setup_mlflow(params)
 
     random_state = params["project"]["random_state"]
     algorithms = params["training"]["algorithms"]
