@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
+
 from src.serving.main import app
+
 
 def build_sample_features(expected_features):
     default_values = {
@@ -63,7 +65,7 @@ def test_predict():
 
         response = client.post(
             "/predict",
-            json={"features": sample_features}
+            json={"features": sample_features},
         )
 
         assert response.status_code == 200, response.text
@@ -98,7 +100,7 @@ def test_batch_predict():
                     {"features": sample_features},
                     {"features": sample_features},
                 ]
-            }
+            },
         )
 
         assert response.status_code == 200, response.text
@@ -126,13 +128,63 @@ def test_missing_features_validation():
             json={
                 "features": {
                     "T": 20.0,
-                    "RH": 50.0
+                    "RH": 50.0,
                 }
-            }
+            },
         )
 
         assert response.status_code == 400
-        assert "Missing required features" in response.json()["detail"]
+
+        detail = response.json()["detail"]
+
+        assert detail["error"] == "Missing required features"
+        assert "missing_features" in detail
+        assert isinstance(detail["missing_features"], list)
+        assert len(detail["missing_features"]) > 0
+
+
+def test_unexpected_features_validation():
+    with TestClient(app) as client:
+        schema_response = client.get("/schema")
+        expected_features = schema_response.json()["expected_features"]
+
+        sample_features = build_sample_features(expected_features)
+        sample_features["fake_feature"] = 999.0
+
+        response = client.post(
+            "/predict",
+            json={"features": sample_features},
+        )
+
+        assert response.status_code == 400
+
+        detail = response.json()["detail"]
+
+        assert detail["error"] == "Unexpected features provided"
+        assert "unexpected_features" in detail
+        assert "fake_feature" in detail["unexpected_features"]
+
+
+def test_feature_range_validation():
+    with TestClient(app) as client:
+        schema_response = client.get("/schema")
+        expected_features = schema_response.json()["expected_features"]
+
+        sample_features = build_sample_features(expected_features)
+        sample_features["hour"] = 99.0
+
+        response = client.post(
+            "/predict",
+            json={"features": sample_features},
+        )
+
+        assert response.status_code == 400
+
+        detail = response.json()["detail"]
+
+        assert detail["error"] == "Feature values outside allowed ranges"
+        assert "invalid_features" in detail
+        assert detail["invalid_features"][0]["feature"] == "hour"
 
 
 def test_metrics():
