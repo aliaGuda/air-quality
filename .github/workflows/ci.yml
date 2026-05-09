@@ -28,9 +28,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install dvc dvc-s3
-          pip install "dvc[s3]"
+          python -m pip install -r requirements.txt
+          python -m pip install --no-cache-dir "dvc[s3]" boto3 s3fs dvc-s3
+
+      - name: Verify DVC S3 install
+        run: |
+          python -m pip show dvc
+          python -m pip show dvc-s3
+          python -m pip show boto3
 
       - name: Pull DVC artifacts from Cloudflare R2
         env:
