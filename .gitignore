@@ -57,3 +57,4 @@ mlruns/
 !logs/.gitkeep
 download_data.py
 /mlartifacts
+/mlflow_data
