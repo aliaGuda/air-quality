@@ -1,6 +1,8 @@
 import hashlib
 import time
 import uuid
+import numpy as np
+import pandas as pd
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -105,10 +107,36 @@ def hash_features(features: dict) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def calculate_confidence(prediction: float) -> float:
-    confidence = 1 / (1 + abs(prediction))
-    return round(float(confidence), 4)
+def calculate_confidence(ordered_features: dict) -> float:
+    try:
+        if not hasattr(model_service.model, "staged_predict"):
+            return 0.5
 
+        input_df = pd.DataFrame([ordered_features])
+        transformed_features = model_service.preprocessor.transform(input_df)
+
+        staged_predictions = np.array(
+            [
+                prediction[0]
+                for prediction in model_service.model.staged_predict(
+                    transformed_features
+                )
+            ]
+        )
+
+        last_window = (
+            staged_predictions[-20:]
+            if len(staged_predictions) >= 20
+            else staged_predictions
+        )
+
+        uncertainty = np.std(last_window)
+        confidence = 1 / (1 + uncertainty)
+
+        return round(float(confidence), 4)
+
+    except Exception:
+        return 0.5
 
 def make_prediction(request: PredictionRequest) -> dict:
     start_time = time.time()
@@ -120,7 +148,7 @@ def make_prediction(request: PredictionRequest) -> dict:
         prediction = model_service.predict_one(ordered_features)
 
     latency_ms = round((time.time() - start_time) * 1000, 3)
-    confidence = calculate_confidence(prediction)
+    confidence = calculate_confidence(ordered_features)
 
     PREDICTION_REQUESTS_TOTAL.inc()
     LATEST_PREDICTION_VALUE.set(prediction)
