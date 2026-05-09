@@ -186,7 +186,7 @@ def validate_and_order_features(features: dict) -> dict:
                 detail={
                     "error": "Invalid numeric value",
                     "feature": feature,
-                    "value": value,
+                    "value": str(value),
                 },
             )
 
