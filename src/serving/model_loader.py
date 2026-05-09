@@ -62,7 +62,7 @@ class ModelService:
 
         self.model_source = "local"
         self.model_name = "local-model"
-        self.model_version = "1"
+        self.model_version = "2"
 
         self.load_expected_features()
 
